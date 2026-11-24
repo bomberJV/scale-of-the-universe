@@ -1,0 +1,54 @@
+/* Scale of the universe: one stage, a slider under it and the list of stops beside it. */
+[hidden]{display:none!important}
+.skip-link{position:absolute;top:-70px;left:20px;z-index:20;background:var(--lime);color:#14200e;padding:12px}.skip-link:focus{top:12px}
+.page-opening .intro{font-size:18px;color:var(--ink);margin-bottom:30px}
+.layout{grid-template-columns:minmax(0,1fr) 230px}
+.column{min-width:0}
+.stage{background:#0c1512}.stage canvas{height:min(760px,78vh);min-height:440px;touch-action:none;cursor:grab}.stage canvas:active{cursor:grabbing}
+.stage canvas:focus-visible{outline-offset:-3px}
+.stage .hud{display:flex;flex-direction:column;gap:2px;line-height:1.35;text-shadow:0 1px 3px #000c,0 0 12px #0008}
+.stage .hud .mono{color:#b9c8bd}.stage .hud b{font:500 19px/1.2 system-ui,sans-serif;color:#f2f1e7;letter-spacing:-.2px}
+.stage .hud span:last-child{font-size:11px;color:#c3d1c5}.stage .hud sup{font-size:8px}
+.stage .stage-label{top:20px;bottom:auto;text-shadow:0 1px 3px #000c}
+.scale-bar{display:flex;align-items:center;gap:14px;margin-top:12px}
+.scale-bar input{flex:1;min-width:0;padding:0;border:0;background:none;accent-color:var(--lime)}
+.scale-bar button{white-space:nowrap;min-width:108px}
+.side{display:flex;flex-direction:column;gap:14px;padding-top:14px}
+.readout .mono{margin:0}.readout h2{margin:6px 0 2px;font-size:24px;line-height:1.15}.readout .note{margin:0;min-height:3.6em}
+.stops{position:relative;list-style:none;margin:0;padding:0;display:flex;flex-direction:column;border-left:1px solid var(--line)}
+.stops button{width:100%;text-align:left;background:none;border:0;border-radius:0;padding:5px 12px;font-size:12px;color:var(--muted);margin-left:-1px;border-left:1px solid transparent}
+.stops button:hover{color:var(--ink)}
+.stops button[aria-current]{color:var(--lime);border-left-color:var(--lime)}
+@media(max-width:850px){.layout{grid-template-columns:minmax(0,1fr)}.side{display:flex;padding-top:4px;min-width:0}.readout .note{min-height:0}
+  .stops{flex-direction:row-reverse;justify-content:flex-end;overflow-x:auto;max-width:100%;border-left:0;border-top:1px solid var(--line);padding-bottom:6px;scrollbar-width:thin}
+  .stops button{white-space:nowrap;margin:-1px 0 0;border-left:0;border-top:1px solid transparent;padding:9px 11px}.stops button[aria-current]{border-top-color:var(--lime)}}
+@media(max-width:540px){.stage canvas{height:62vh;min-height:360px}.stage .stage-label{display:none}.scale-bar .mono{display:none}.page-opening .intro{font-size:16px}}
+details a{color:var(--lime)}
+
+.stage{position:relative}
+.scale-bar .sound{white-space:nowrap}
+@media(max-width:540px){.scale-bar{flex-wrap:wrap}.scale-bar input{order:5;flex-basis:100%}}
+
+.readout .more{margin-top:8px;padding:0;border:0;background:none;border-radius:0;color:var(--lime);font-size:13px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.note-panel{position:fixed;top:0;right:0;bottom:0;z-index:60;width:min(420px,100vw);overflow-y:auto;padding:22px 26px 40px;background:var(--panel);border-left:1px solid var(--line);box-shadow:-24px 0 60px #0008;transform:translateX(104%);transition:transform .22s ease}
+.note-panel.open{transform:none}
+.note-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.note-head .mono{margin:0;color:var(--lime);font-size:11px;letter-spacing:1.6px}
+#note-close{width:36px;height:36px;padding:0;font-size:22px;line-height:1;border-radius:50%}
+#note-title{margin:14px 0 12px;font-size:28px;line-height:1.12}
+/* The note's picture (public/home/label-photo.js). */
+#note-photo{margin:0 0 16px}#note-photo[hidden]{display:none}
+.label-photo-frame{position:relative;width:100%;aspect-ratio:3/2;max-height:240px;overflow:hidden;border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,var(--panel))}
+.label-photo-frame img{display:block;width:100%;height:100%;object-fit:contain;transition:opacity .3s ease}
+.label-photo.loading .label-photo-frame{background:linear-gradient(100deg,color-mix(in srgb,var(--ink) 5%,var(--panel)) 30%,color-mix(in srgb,var(--ink) 11%,var(--panel)) 50%,color-mix(in srgb,var(--ink) 5%,var(--panel)) 70%) 0 0/300% 100%;animation:label-photo-wait 1.4s linear infinite}
+.label-photo.loading img{opacity:0}.label-photo.loading figcaption{visibility:hidden}
+@keyframes label-photo-wait{to{background-position:-150% 0}}
+@media(prefers-reduced-motion:reduce){.label-photo.loading .label-photo-frame{animation:none}}
+.label-photo figcaption{margin-top:8px;font-size:11px;line-height:1.5;color:var(--muted)}.label-photo figcaption a{color:inherit}
+#note-body p{margin:0 0 12px;color:var(--ink);line-height:1.6}
+#note-facts{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:16px 0;padding:14px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#note-facts dt{color:var(--muted);font-size:13px;max-width:9em}#note-facts dd{margin:0;font-size:13px;overflow-wrap:break-word;min-width:0}
+#note-read .mono{margin:18px 0 6px;color:var(--muted);font-size:11px;letter-spacing:1.4px}
+#note-read ul{margin:0;padding:0;list-style:none}#note-read li{margin:6px 0}#note-read a{color:var(--lime)}
+@media(max-width:540px){.note-panel{top:auto;left:0;width:auto;max-height:72vh;border-left:0;border-top:1px solid var(--line);border-radius:16px 16px 0 0;transform:translateY(104%);box-shadow:0 -20px 50px #0009}.note-panel.open{transform:none}}
+@media(prefers-reduced-motion:reduce){.note-panel{transition:none}}

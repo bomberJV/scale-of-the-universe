@@ -1,0 +1,27 @@
+name: Boundaries
+# Downloads the Census Bureau's state and county outlines and commits the generated
+# scale/boundaries.js to the branch that changed the script.
+on:
+  push:
+    paths: [tools/scale_boundaries.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - run: python3 tools/scale_boundaries.py
+      - name: Commit the outlines if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add scale/boundaries.js
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          git commit -m "State and county outlines from the Census Bureau (generated)"
+          git push

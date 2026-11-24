@@ -1,0 +1,24 @@
+# Scale of the universe
+
+One frame, zoomed by hand from the Planck length to the edge of the observable universe: about 62 powers of ten. A slider, the scroll wheel, a pinch or the list of stops sets the frame's width; the width picks the scene. A drag (or W, A, S, D) turns every scene in 3D; a double click, 0 or "Level view" undoes the turn.
+
+| Frame width | Scene | File |
+| --- | --- | --- |
+| 4 × 10⁻³⁵ m to 8 m | The zoom shared with red's homepage: birds circling, an oak leaf and an acorn falling, a honey bee, a mosquito and a dandelion seed hovering in front of the blurred street, a hair, a poppy seed and grains of sand, salt and silt, a cough droplet with pollen, spores and dust, a cheek cell with mouth bacteria, its nucleus, the nuclear envelope with pores and viruses, nucleosomes, DNA, an A–T base pair with water round it, adenine's nitrogen atom, its nucleus, a proton and its quarks, then one quark, the smallest length a collider has reached and the Planck length, with nothing drawn between (nothing there has been measured). Every thing measured with red's dimension lines and labels | `/home/red/sizes.js` (with `/home/red/ink.js`), drawn by `small.js` |
+| 0.5 m to 300 km | Times Square through a perspective camera held over Seventh Avenue, Manhattan's buildings with lit windows, the five boroughs; on the sidewalks, red's street furniture (lamps, trees, signals, hydrants, LinkNYC kiosks, a newsstand, hot dog carts, a bus shelter, a subway entrance, a Citi Bike station, benches); on the avenue, vehicles at real models' sizes (sedan, yellow cab, SUV, pickup, delivery van, box truck, garbage truck, 40 ft and 60 ft buses, tractor-trailer), shared with red's street | `city.js`, vehicles from `/home/red/vehicles.js`, boroughs from `/home/red/newyork.js` |
+| 60 km to 38,000 km | The Earth as a globe centred on New York | `earth.js` |
+| 38,000 km to 100,000 light-years | The homepage's pull back: Moon, planets, nearest stars, Milky Way | `public/home/journey.js` (`cosmicZoom`) |
+| every width | Wavelengths drawn to the frame's scale along its lower edge: kinds of light from gamma rays to the Earth's own radio note, each particle's Compton wavelength, a few moving things' de Broglie wavelengths, and sound, water and gravitational waves | `waves.js` |
+| 30 m to 18 km | The Titanic set down in Seventh Avenue for scale, and Midtown's tallest towers at their real places and heights | `city.js` (`SHIP`, `SKYLINE`) |
+| 6 AU to 300 AU | Rigel, Betelgeuse and Stephenson 2-18 set where the Sun is, for scale | `giants.js` |
+| past 100,000 light-years | The Local Group, nearby galaxies and clusters; Laniakea, the Perseus–Pisces Supercluster, the CfA2 and Sloan Great Walls and the Boötes Void; the observable universe | `far.js` |
+
+`app.js` holds the controls and chooses the scene. The page loads the homepage's `scenes.js`, `stars.js`, `galaxy.js`, `journey.js`, `geography.js` and red's `newyork.js`, `ink.js` (how every name is written, here as on the homepage) and `sizes.js` (the zoom below 8 m) as they are. `journey.js` exports what this page needs (`span`, `finished`, `view`, `centre`, `galaxies`, `picture`, `beyond`); the homepage does not use them. The pull back draws the Earth through `worldAtlas.fold`, which this page supplies with its own globe.
+
+What is measured and what is drawn is listed at the top of each file and on the page under "What is measured and what is drawn".
+
+Sources for every figure, and which ones were checked on 2026-11-18, are on the page and at the top of `/home/red/sizes.js`, `/home/red/vehicles.js`, `far.js` and the galaxy list in `public/home/journey.js`.
+
+Every sound is made in the browser by `sound.js` (no files): a soundscape per scene, faded by the frame's width, a note at each stop, the puppy's bark when he is pressed, a howl at the Moon and car horns. Pressing any name or description drawn in the frame opens its note from `notes.js` in a side panel; `app.js` keeps every piece of text drawn, with where it is, to know what was pressed. The puppy lives on the crosswalk at Times Square (`city.js`): press him, or press B while he is in the frame, and he barks; he also barks when the frame passes a stop with him in it.
+
+State and county outlines come from the Census Bureau via `tools/scale_boundaries.py`, which the `Scale boundaries` workflow runs (this session cannot download them) and commits as `boundaries.js`. The counties highlighted as Brandon's service area are `WORK` in `city.js`. Pressing the ground names the county or state under it; pressing a building, car, person or landmark names that too.

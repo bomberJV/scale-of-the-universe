@@ -48,6 +48,22 @@ test('every local file the page refers to is in the repository', () => {
   }
 });
 
+test('every module a scene imports is in the repository, the ones fetched later too', () => {
+  for (const file of fs.readdirSync(page).filter((f) => f.endsWith('.js'))) {
+    const text = fs.readFileSync(path.join(page, file), 'utf8');
+    for (const [, ref] of text.matchAll(/\bimport\s*\(\s*['"](\.[^'"]+)['"]\s*\)|\bfrom\s+['"](\.[^'"]+)['"]/g).map((m) => [0, m[1] || m[2]])) {
+      assert.ok(fs.existsSync(path.resolve(page, ref)), `${file} imports ${ref}, which is missing`);
+    }
+  }
+});
+
+test('the wavelengths have their own strip, and the frame is not drawn over', () => {
+  assert.match(html, /<canvas id="waves"/);
+  const app = fs.readFileSync(path.join(page, 'app.js'), 'utf8');
+  assert.ok(!/waves\(ctx,/.test(app), 'app.js draws the waves on the frame');
+  assert.match(app, /waves\(sctx,/);
+});
+
 test('the page loads the homepage scripts from home/', () => {
   assert.ok(classic.length >= 10);
   for (const src of classic) assert.match(src, /^\.\.\/home\//, `${src} should load from home/`);

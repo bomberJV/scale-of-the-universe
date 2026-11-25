@@ -14,11 +14,11 @@ Run `node --test tests/*.test.mjs` with Node 22 or newer.
 
 | Folder | Contents |
 | --- | --- |
-| `scale/` | The page: controls, scenes, notes, sounds and the state and county outlines |
+| `scale/` | The page: controls, scenes, notes, sounds, the wavelengths' strip, the state and county outlines and the surveys' galaxies |
 | `home/` | Modules shared with the homepage: the pull back from the Earth to the Milky Way (`journey.js`), stars, galaxies, the Moon and the world map. `home/red/` holds the zoom below 8 m (`sizes.js`), the lettering (`ink.js`), the street's vehicles and the five boroughs, shared with the red homepage |
 | `shared/` | The projects' stylesheet and symbol font |
-| `tools/` | `scale_boundaries.py`, which writes `scale/boundaries.js` from the Census Bureau's files; the `Boundaries` workflow runs it |
-| `tests/` | Checks that every file the page loads is here and that every module loads |
+| `tools/` | `scale_boundaries.py`, which writes `scale/boundaries.js` from the Census Bureau's files, and `build_galaxies.py`, which writes `scale/galaxies.js` from two redshift surveys; the `Boundaries` and `Galaxies` workflows run them and commit what they write |
+| `tests/` | Checks that every file the page loads is here and that every module loads, that every name in the zoom has a note, and that the galaxies are where the clusters are |
 
 The website serves the same files at `/projects/play/scale/`, `/home/` and `/projects/play/shared/`. The served copy differs in two files: `scale/index.html` carries the site's header, search metadata, themes and analytics and loads `/home/` from the site root, and `scale/notes.js` links the consulting page by path instead of by its full address.
 
@@ -33,5 +33,6 @@ Created by Brandon Frank Han-Chween Huang ([brandonfhuang.com](https://brandonfh
   - The land and places in `home/geography.js` are from Natural Earth, in the public domain.
   - The borough outlines in `home/red/newyork.js` are the NYC Department of City Planning's borough boundaries, as packaged by Code for America's Click That Hood (MIT).
   - The state and county outlines in `scale/boundaries.js` are from the US Census Bureau's cartographic boundary files, in the public domain.
+  - The galaxies in `scale/galaxies.js` are positions worked out from the 2MASS Redshift Survey (Huchra et al. 2012, ApJS 199, 26, from the CDS's VizieR service) and from the Sloan Digital Sky Survey's Data Release 17 (public data; cite SDSS when using them).
   - `shared/symbols.woff` is a DejaVu font subset under the Bitstream Vera license ([shared/FONT-LICENSE.txt](shared/FONT-LICENSE.txt)).
   - Pictures in the side panel are fetched from Wikimedia Commons when a note opens and are shown with their author and license; none are stored here.

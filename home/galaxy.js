@@ -46,15 +46,24 @@ const milkyWay = (() => {
     {name:'Scutum–Centaurus arm',label:[scutum(48),48],path:trace([{fit:scutum,from:104,to:0},{until:edge}])},
     {name:'Sagittarius arm',label:[sagittarius(-12),-12],path:[...inward(sagittarius,97),...trace([{fit:sagittarius,from:97,to:2},{until:edge}])]},
     {name:'Perseus arm',label:[perseus(22),22],path:[...inward(perseus,115),...trace([{fit:perseus,from:115,to:-23},{until:edge}])]},
-    {name:'Local arm',label:[local(-7),-7],spur:true,path:trace([{fit:local,from:34,to:-8}])}
+    // The Local arm is a segment: it has been measured over a quarter turn or less and is not
+    // carried on past that. It is no fainter than the others for it. Xu et al. 2013 (ApJ 769, 15)
+    // found its star formation, length and pitch to be those of an arm like Perseus or
+    // Sagittarius, not of a spur, and Reid et al. fit it as one. An earlier version drew it at
+    // 55% of the others, which left the Sun looking as if it sat in a gap between two arms
+    // (Brandon, 2026-11-25: "fix it so its accurate").
+    {name:'Local arm',label:[local(-7),-7],segment:true,path:trace([{fit:local,from:34,to:-8}])}
   ];
+  // A segment thins out over its last 4° at each end, where the measurements stop, about as
+  // far along the arm as the arm is wide.
+  const ends=(arm,i)=>arm.segment?Math.min(1,(i+.5)/8,(arm.path.length-.5-i)/8):1;
   const points=[];
   // kind: 0 arm, 1 bright knot in an arm, 2 disc between the arms, 3 bar and bulge.
   const add=(v,kind,size)=>points.push([v[0],v[1],v[2],kind,size]);
   for(const arm of arms){
     // Arms widen with radius: 336 pc at the Sun's radius, 36 pc more per kiloparsec.
     for(let i=1;i<arm.path.length;i++){
-      const [R,azimuth]=arm.path[i],length=R*.5*rad,taper=Math.min(1,(R-barEnd+.6)/1.2,(edge-R)/2.5)*(arm.spur?.55:1);
+      const [R,azimuth]=arm.path[i],length=R*.5*rad,taper=Math.min(1,(R-barEnd+.6)/1.2,(edge-R)/2.5)*ends(arm,i);
       let n=length*taper*104;n=Math.floor(n)+(random()<n%1?1:0);
       for(let k=0;k<n;k++){
         // Most points keep to the measured width of the arm. A fifth spread wider, as older stars do.
@@ -88,10 +97,13 @@ const milkyWay = (() => {
   kept.forEach(([x,y,z,k,s,n],i)=>{X[i]=x;Y[i]=y;Z[i]=z;kind[i]=k;size[i]=s;near[i]=n});
   // Each arm's centre line, cut into short runs, for the light along it.
   const lanes=arms.flatMap(arm=>{
+    // A segment's light is one run with rounded ends, stopped 4° short of each end so that its
+    // core ends where the dots do. Cut square it would end in a hard edge across the disc.
+    if(arm.segment){const run=arm.path.slice(8,-8),R=run[Math.floor(run.length/2)][0];return [{at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc,round:true}]}
     const runs=[];
     for(let i=0;i+1<arm.path.length;i+=24){
       const run=arm.path.slice(i,i+25),R=run[Math.floor(run.length/2)][0];
-      runs.push({at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5)*(arm.spur?.6:1),width:Math.max(.15,.336+.036*(R-8.15))*kpc});
+      runs.push({at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc});
     }
     return runs;
   });

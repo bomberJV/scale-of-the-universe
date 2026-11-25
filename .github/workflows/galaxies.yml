@@ -1,0 +1,27 @@
+name: Galaxies
+# Downloads the 2MASS Redshift Survey and a sample of the Sloan survey's galaxies and commits the
+# generated scale/galaxies.js to the branch that changed the script.
+on:
+  push:
+    paths: [tools/build_galaxies.py]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+      - run: python3 tools/build_galaxies.py
+      - name: Commit the galaxies if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add scale/galaxies.js
+          if git diff --cached --quiet; then echo "No change"; exit 0; fi
+          git commit -m "Galaxies from the 2MASS Redshift Survey and the Sloan survey (generated)"
+          git push

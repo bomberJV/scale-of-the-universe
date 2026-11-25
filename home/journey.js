@@ -276,7 +276,7 @@ const cosmicZoom = (() => {
   const bright=.8;
   const between=(size,small,large)=>ease((size-small)/(small*1.4))*(1-ease((size-large)/(large*.5)));
 
-  // The dust lanes along the arms are 154 runs, each stroked six times at nested widths.
+  // The dust lanes along the arms are about 150 runs, each stroked six times at nested widths.
   // Stroking them every frame costs more than the rest of the frame, but they lie in the plane of
   // the disc and only the camera moves. So they are stroked once into an image of the whole
   // disc, about 60 light-years to a texel, and each frame lays the image in with its own
@@ -291,7 +291,7 @@ const cosmicZoom = (() => {
     canvas.width=Math.ceil((x1-x0)*res);canvas.height=Math.ceil((y1-y0)*res);
     const g=canvas.getContext('2d');g.setTransform(res,0,0,res,-x0*res,-y0*res);g.lineJoin='round';
     for(const lane of milkyWay.lanes){
-      g.beginPath();lane.at.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));
+      g.beginPath();lane.at.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));g.lineCap=lane.round?'round':'butt';
       for(const [wide,ink,alpha] of inks){g.globalAlpha=laneStrength*lane.strength*alpha;g.strokeStyle=ink;g.lineWidth=lane.width*wide;g.stroke()}
     }
     return {canvas,x0,y0,res};

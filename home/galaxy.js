@@ -75,10 +75,17 @@ const milkyWay = (() => {
     const round=i%5<2,s=normal()*(round?.9:2.3),t=normal()*(round?.9:.62);
     add([sunToCentre+(s*along[0]+t*across[0])*kpc,(s*along[1]+t*across[1])*kpc,normal()*(round?.6:.4)*kpc],3,.65+1.1*random()**3);
   }
-  // Leave the neighbourhood of the Sun to the catalogued stars.
-  const kept=points.filter(([x,y,z])=>{const d=Math.hypot(x,y,z);return d>6500||random()<(d-2500)/4000}).sort((a,b)=>a[3]-b[3]);
-  const count=kept.length,X=new Float32Array(count),Y=new Float32Array(count),Z=new Float32Array(count),size=new Float32Array(count),kind=new Uint8Array(count);
-  kept.forEach(([x,y,z,k,s],i)=>{X[i]=x;Y[i]=y;Z[i]=z;kind[i]=k;size[i]=s});
+  // Close in, the neighborhood of the Sun is left to the cataloged stars: no model point within
+  // 2,500 light-years of it, and fewer than the model has out to 6,500. That gap must close as
+  // the frame widens, or the Sun sits in a hole in its own arm with a clump of cataloged stars
+  // in the middle of it (Brandon, 2026-11-25: "the part of the galaxy we zoom out of seems like
+  // a random block just inserted into the galaxy, not part of a spiral"). So no point is thrown
+  // away: each carries `near`, the size of the gap (1 close in, 0 from far out) at which it
+  // comes into the picture. Points that were always drawn have 1 or more.
+  for(const point of points){const d=Math.hypot(point[0],point[1],point[2]);point.push(d>6500?2:Math.min(2,d/(2500+4000*random())))}
+  const kept=points.sort((a,b)=>a[3]-b[3]);
+  const count=kept.length,X=new Float32Array(count),Y=new Float32Array(count),Z=new Float32Array(count),size=new Float32Array(count),kind=new Uint8Array(count),near=new Float32Array(count);
+  kept.forEach(([x,y,z,k,s,n],i)=>{X[i]=x;Y[i]=y;Z[i]=z;kind[i]=k;size[i]=s;near[i]=n});
   // Each arm's centre line, cut into short runs, for the light along it.
   const lanes=arms.flatMap(arm=>{
     const runs=[];
@@ -88,5 +95,5 @@ const milkyWay = (() => {
     }
     return runs;
   });
-  return {count,X,Y,Z,size,kind,sunToCentre,kpc,lanes,labels:arms.map(arm=>({name:arm.name,at:place(...arm.label)}))};
+  return {count,X,Y,Z,size,kind,near,sunToCentre,kpc,lanes,labels:arms.map(arm=>({name:arm.name,at:place(...arm.label)}))};
 })();

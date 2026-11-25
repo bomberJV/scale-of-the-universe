@@ -107,7 +107,11 @@ const cosmicZoom = (() => {
   });
 
   // Catalogued stars, nearest first, in light-years.
-  const count=starCatalog.count,far=starCatalog.farthest,limits=starCatalog.limits;
+  const count=starCatalog.count,far=starCatalog.farthest;
+  // The catalog's own table stops at 8,000 light-years, where 1,800 stars are still drawn:
+  // twice as many dots as the model has round the Sun, and each one larger. From farther out
+  // only the supergiants could be picked out, so the limit keeps rising with the frame.
+  const limits=[...starCatalog.limits,[16000,-3.7],[32000,-4.6],[60000,-5.2]];
   const starX=new Float32Array(count),starY=new Float32Array(count),starZ=new Float32Array(count);
   const starDistance=new Float32Array(count),starMagnitude=new Float32Array(count),starInk=new Uint8Array(count);
   {
@@ -353,8 +357,8 @@ const cosmicZoom = (() => {
       gl.bindBuffer(gl.ARRAY_BUFFER,colours);gl.bufferData(gl.ARRAY_BUFFER,colourData(),gl.STATIC_DRAW);cores();
     }
     const tint=[[213,223,255],[255,255,255],[234,223,206],[255,220,174]],strength=[.9,.95,.55,.8];
-    const vertex=`attribute vec3 p;attribute vec4 c;attribute float s;attribute float k;
-      uniform vec3 R;uniform vec3 D;uniform vec2 sun;uniform vec4 m;uniform vec2 shift;uniform vec2 view;uniform float grain;
+    const vertex=`attribute vec3 p;attribute vec4 c;attribute float s;attribute float k;attribute float n;
+      uniform vec3 R;uniform vec3 D;uniform vec2 sun;uniform vec4 m;uniform vec2 shift;uniform vec2 view;uniform float grain;uniform float gap;
       varying vec4 vc;varying float vk;
       void main(){
         vec2 css=sun+vec2(dot(p,R),dot(p,D));
@@ -365,7 +369,9 @@ const cosmicZoom = (() => {
         // covers, so a dot carries as much light as the 2D canvas gives it.
         float whole=k>0.5?max(size,1.0):max(ceil(size),1.0);
         gl_PointSize=whole;
-        vc=vec4(c.rgb,c.a*(k>0.5?1.0:min(1.0,size*size/(whole*whole))));vk=k;
+        // A dot round the Sun comes in as the gap left for the cataloged stars closes.
+        float shown=clamp((n-gap)/0.12,0.0,1.0);
+        vc=vec4(c.rgb,c.a*shown*(k>0.5?1.0:min(1.0,size*size/(whole*whole))));vk=k;
       }`;
     const fragment=`precision mediump float;varying vec4 vc;varying float vk;uniform vec3 core;uniform vec3 pinkCore;
       void main(){
@@ -402,13 +408,13 @@ const cosmicZoom = (() => {
         const k=m.kind[i],knot=k===1,pink=knot&&i%3===0;kind[i]=knot?(pink?2:1):0;
       }
       const attribute=(name,data,n)=>{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);const at=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(at);gl.vertexAttribPointer(at,n,gl.FLOAT,false,0,0);return b};
-      attribute('p',pos,3);colours=attribute('c',colourData(),4);attribute('s',size,1);attribute('k',kind,1);
-      for(const u of ['R','D','sun','m','shift','view','grain','core','pinkCore'])where[u]=gl.getUniformLocation(program,u);
+      attribute('p',pos,3);colours=attribute('c',colourData(),4);attribute('s',size,1);attribute('k',kind,1);attribute('n',m.near,1);
+      for(const u of ['R','D','sun','m','shift','view','grain','gap','core','pinkCore'])where[u]=gl.getUniformLocation(program,u);
       cores();
       gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);
       return true;
     }
-    function draw(ctx,w,h,sunX,sunY,r0,r1,r2,d0,d1,d2,grain){
+    function draw(ctx,w,h,sunX,sunY,r0,r1,r2,d0,d1,d2,grain,gap){
       if(failed)return false;
       try{if(!gl&&!setup()){failed=true;return false}}catch{failed=true;return false}
       if(gl.isContextLost()){failed=true;return false}
@@ -416,7 +422,7 @@ const cosmicZoom = (() => {
       if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H}
       gl.viewport(0,0,W,H);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
       gl.uniform3f(where.R,r0,r1,r2);gl.uniform3f(where.D,d0,d1,d2);gl.uniform2f(where.sun,sunX,sunY);
-      gl.uniform4f(where.m,t.a,t.b,t.c,t.d);gl.uniform2f(where.shift,t.e,t.f);gl.uniform2f(where.view,W,H);gl.uniform1f(where.grain,grain);
+      gl.uniform4f(where.m,t.a,t.b,t.c,t.d);gl.uniform2f(where.shift,t.e,t.f);gl.uniform2f(where.view,W,H);gl.uniform1f(where.grain,grain);gl.uniform1f(where.gap,gap);
       gl.drawArrays(gl.POINTS,0,count);
       ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;ctx.drawImage(canvas,0,0);ctx.restore();
       return true;
@@ -583,17 +589,24 @@ const cosmicZoom = (() => {
         ctx.fillStyle=glow;ctx.fillRect(gx-bulge,gy-bulge,2*bulge,2*bulge);
       }
       const tints=['#d5dfff','#ffffff','#eadfce','#ffdcae'],strength=[.9,.95,.55,.8];
+      // Close in, the Sun's neighborhood is left to the cataloged stars (see galaxy.js). The
+      // gap closes as the half-frame grows from 5,000 to 20,000 light-years: the model's dots
+      // round the Sun come in one by one, the nearest last, and the Local arm runs through it.
+      const gap=1-ease(Math.log(edge/5000)/Math.log(4));
       // The graphics card draws the disc's tens of thousands of dots in one call where it can;
       // drawn one by one below, they cost most of a frame on a modest laptop.
-      if(!discDots.draw(ctx,w,h,sunX,sunY,r0,r1,r2,d0,d1,d2,grain)){
+      if(!discDots.draw(ctx,w,h,sunX,sunY,r0,r1,r2,d0,d1,d2,grain,gap)){
         ctx.save();let kind=-1;
         for(let i=0;i<m.count;i++){
+          const near=m.near[i];if(near<=gap)continue;
           const x=sunX+m.X[i]*r0+m.Y[i]*r1+m.Z[i]*r2;if(x<-6||x>w+6)continue;
           const y=sunY+m.X[i]*d0+m.Y[i]*d1+m.Z[i]*d2;if(y<-6||y>h+6)continue;
           if(m.kind[i]!==kind){kind=m.kind[i];ctx.fillStyle=tints[kind];ctx.globalAlpha=strength[kind]}
+          // A dot still coming in is fainter; the next dot sets its own strength again.
+          if(near<gap+.12){ctx.globalAlpha=strength[kind]*(near-gap)/.12;kind=-1}
           const size=m.size[i]*grain;
           // Bright knots stand for star-forming regions, pink or blue-white.
-          if(kind===1)ctx.drawImage(sprites[i%3?1:8],x-size*2,y-size*2,size*4,size*4);
+          if(m.kind[i]===1)ctx.drawImage(sprites[i%3?1:8],x-size*2,y-size*2,size*4,size*4);
           else ctx.fillRect(x-size/2,y-size/2,size,size);
         }
         ctx.restore();
@@ -630,7 +643,12 @@ const cosmicZoom = (() => {
       const soft=.5*edge,faintest=limit(edge/1.25),reference=Math.min(faintest,16),shrink=clamp(far*zl/300,.34,1);
       // Sizes run from the faintest star drawn to about the most luminous one this close,
       // so each scale has a few large stars among many small ones.
-      const range=reference-clamp(2-2.9*Math.log10(edge/8),-7.5,2),sized=m=>(.95+4.6*Math.min(1.1,(reference-m)/range)**1.8)*shrink;
+      // From far enough out that the arms show, a cataloged star is one more dot of the disc:
+      // its glow closes down to a dot of about the model's size, a little larger for the most
+      // luminous. Left at a star's size, the few hundred nearest the Sun stood in the galaxy as a
+      // patch of big bright stars with nothing like it anywhere else in the disc.
+      const settled=ease(Math.log(edge/5500)/Math.log(3));
+      const range=reference-clamp(2-2.9*Math.log10(edge/8),-7.5,2),sized=m=>{const size=(.95+4.6*Math.min(1.1,(reference-m)/range)**1.8)*shrink;return size+(Math.min(size,.8+.12*size)-size)*settled};
       const r0=right[0]*zl,r1=right[1]*zl,r2=right[2]*zl,d0=down[0]*zl,d1=down[1]*zl,d2=down[2]*zl;
       ctx.save();
       for(let i=0;i<count&&starDistance[i]<edge;i++){

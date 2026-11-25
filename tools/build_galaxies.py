@@ -41,7 +41,11 @@ NEAR = 500.0              # km/s in the CMB frame: nearer than this a redshift s
 TWOMRS_REACH = 8.5e8      # light-years
 SDSS_Z = (0.045, 0.17)
 SDSS_KEEP = 9             # one in this many
-CDS = ["https://cdsarc.cds.unistra.fr/ftp/J/ApJS/199/26/", "https://cdsarc.u-strasbg.fr/ftp/J/ApJS/199/26/"]
+CDS = ["https://cdsarc.cds.unistra.fr/ftp/J/ApJS/199/26/", "http://cdsarc.cds.unistra.fr/ftp/J/ApJS/199/26/", "http://cdsarc.u-strasbg.fr/ftp/J/ApJS/199/26/",
+       "https://cdsarc.cfa.harvard.edu/ftp/J/ApJS/199/26/"]
+# The same table through VizieR and its mirrors, as tab-separated text, if the files cannot be had.
+VIZIER = [h + "/viz-bin/asu-tsv?-source=J/ApJS/199/26/table3&-out.all&-out.max=unlimited" for h in
+          ("https://vizier.cds.unistra.fr", "https://vizier.cfa.harvard.edu", "http://vizier.cds.unistra.fr", "https://vizier.iucaa.in", "https://vizier.nao.ac.jp")]
 SKYSERVER = ["https://skyserver.sdss.org/dr17/SkyServerWS/SearchTools/SqlSearch", "https://skyserver.sdss.org/dr18/SkyServerWS/SearchTools/SqlSearch",
              "https://skyserver.sdss.org/dr16/SkyServerWS/SearchTools/SqlSearch"]
 # J2000 right ascension and declination to a galactic direction (the matrix far.js uses).
@@ -66,7 +70,7 @@ def fetch(urls, tries=3, timeout=300):
                 last = e
                 say(f"  failed ({e!r}) {url[:110]}")
                 time.sleep(5 * (n + 1))
-    raise SystemExit(f"::error::could not fetch {urls[0][:120]}: {last!r}")
+    raise IOError(f"could not fetch {urls[0][:120]}: {last!r}")
 
 
 def comoving_ly(z, steps=24):
@@ -116,29 +120,61 @@ def columns(readme, table):
     return out
 
 
-def twomrs():
-    say("2MRS (CDS J/ApJS/199/26, table 3)")
-    readme = fetch([u + "ReadMe" for u in CDS]).decode("latin-1")
+def twomrs_rows():
+    """Each galaxy as (unit galactic direction, heliocentric cz), from the CDS files or from VizieR."""
+    try:
+        yield from twomrs_files()
+        return
+    except (IOError, StopIteration) as e:
+        say(f"  the CDS files could not be read ({e}); trying VizieR")
+    text = fetch(VIZIER, tries=2, timeout=600).decode("utf-8", "replace")
+    lines = [l for l in text.splitlines() if l and not l.startswith("#")]
+    head = [c.strip() for c in lines[0].split("\t")]
+    say("  columns:", " ".join(head))
+    col = lambda *names: next((head.index(n) for n in names if n in head), None)
+    lon, lat, ra, dec, vel = col("GLON"), col("GLAT"), col("RAJ2000", "_RAJ2000", "RAdeg"), col("DEJ2000", "_DEJ2000", "DEdeg"), col("cz", "HRV", "Vhel")
+    if vel is None or ((lon is None or lat is None) and (ra is None or dec is None)):
+        raise SystemExit("::error::2MRS: could not find the position and velocity columns in VizieR's answer")
+    for line in lines[3:]:
+        f = line.split("\t")
+        try:
+            cz = float(f[vel])
+            if lon is not None and lat is not None:
+                l, b = float(f[lon]) * RAD, float(f[lat]) * RAD
+                yield (math.cos(b) * math.cos(l), math.cos(b) * math.sin(l), math.sin(b)), cz
+            else:
+                yield galactic(float(f[ra]), float(f[dec])), cz
+        except (ValueError, IndexError):
+            continue
+
+
+def twomrs_files():
+    readme = fetch([u + "ReadMe" for u in CDS], tries=2).decode("latin-1")
     cols = columns(readme, "table3.dat")
     say("  columns:", " ".join(f"{k}[{a + 1}-{b}]" for k, (a, b) in cols.items()))
     pick = lambda *names: next((cols[n] for n in names if n in cols), None)
     lon, lat, ra, dec = pick("GLON", "GLONdeg"), pick("GLAT", "GLATdeg"), pick("RAdeg", "RAJ2000"), pick("DEdeg", "DEJ2000")
     vel = pick("cz", "HRV", "Vhel", "RV") or next((v for k, v in cols.items() if "cz" in k.lower() and not k.lower().startswith(("e_", "r_", "n_"))), None)
     if not vel or not ((lon and lat) or (ra and dec)):
-        raise SystemExit("::error::2MRS: could not find the position and velocity columns in the ReadMe")
-    raw = fetch([u + "table3.dat.gz" for u in CDS])
+        raise IOError("could not find the position and velocity columns in the ReadMe")
+    raw = fetch([u + "table3.dat.gz" for u in CDS], tries=2)
     text = gzip.decompress(raw).decode("latin-1") if raw[:2] == b"\x1f\x8b" else raw.decode("latin-1")
-    out, read, near, far = [], 0, 0, 0
     for line in text.splitlines():
         try:
             cz = float(line[vel[0]:vel[1]])
             if lon and lat:
                 l, b = float(line[lon[0]:lon[1]]) * RAD, float(line[lat[0]:lat[1]]) * RAD
-                d = (math.cos(b) * math.cos(l), math.cos(b) * math.sin(l), math.sin(b))
+                yield (math.cos(b) * math.cos(l), math.cos(b) * math.sin(l), math.sin(b)), cz
             else:
-                d = galactic(float(line[ra[0]:ra[1]]), float(line[dec[0]:dec[1]]))
+                yield galactic(float(line[ra[0]:ra[1]]), float(line[dec[0]:dec[1]])), cz
         except ValueError:
             continue
+
+
+def twomrs():
+    say("2MRS (CDS J/ApJS/199/26, table 3)")
+    out, read, near, far = [], 0, 0, 0
+    for d, cz in twomrs_rows():
         read += 1
         p = place(d, cz)
         if p is None:

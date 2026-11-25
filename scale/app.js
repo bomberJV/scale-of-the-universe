@@ -7,11 +7,11 @@ import { city as street } from "./city.js";
 import { sound } from "./sound.js";
 import { NOTES, STOP_NOTES, noteFor } from "./notes.js";
 import { air } from "./small.js";
-import { waves, waveNote, waveRoom } from "./waves.js";
+import { waves, waveNote, waveRoom, waveAt } from "./waves.js";
 import { giants } from "./giants.js";
 // The shared zoom's words keep clear of this frame's edges; it has no header or rail over it.
 redInk.links(t => { const n = waveNote(t) || noteFor(t, cosmicZoom.galaxies || []); return !!(n && n.body); });
-redSizes.layout({ chrome: 0 }); redInk.fit(58, 36);                 // resize() makes room for the waves along the bottom
+redSizes.layout({ chrome: 0 }); redInk.fit(58, 40);                 // names keep off the readout at the top and the ruler at the foot
 import * as far from "./far.js";
 
 const Z = cosmicZoom, AU = 1.495978707e11, LY = far.LY, EARTH = 6.378137e6, PLANCK = 1.616255e-35;
@@ -20,6 +20,8 @@ globalThis.worldAtlas = { fold(ctx, w, h, { x, y, r }) { globe(ctx, w, h, x, y, 
 
 const $ = s => document.querySelector(s);
 const canvas = $("#view"), ctx = canvas.getContext("2d"), slider = $("#scale"), play = $("#play");
+// The wavelengths have a strip of their own under the frame, as wide as it and at its scale.
+const strip = $("#waves") || canvas.insertAdjacentElement("afterend", Object.assign(document.createElement("canvas"), { id: "waves" })), sctx = strip.getContext("2d");
 const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 // The visitor's turn of the scene: a rotation in the frame's own axes (x right, y down, z away),
@@ -218,11 +220,13 @@ function draw() {
     vignette = { w, h, c };
   }
   ctx.drawImage(vignette.c, 0, 0, w, h);
-  // The wavelengths that fit this frame, along its lower edge.
-  wavesMove = waves(ctx, w, h, W, reduced ? 0 : clock);
   rule(W);
+  settling = redInk.settling();
+  drawWaves();
 }
-let vignette = null, back = null, cityFound = null, wavesMove = false;
+// The wavelengths that fit this frame, in their strip.
+function drawWaves() { wavesMove = waves(sctx, w, stripTall, 10 ** lw, reduced ? 0 : clock); }
+let vignette = null, back = null, cityFound = null, wavesMove = false, settling = false, stripTall = 0;
 // A ruler in the corner: a round length and how long it is at this width.
 function rule(W) {
   const want = W * Math.min(.22, 150 / w), e = 10 ** Math.floor(Math.log10(want)), len = [5, 2, 1].map(m => m * e).find(m => m <= want * 1.0001), px = len / W * w, x = 16, y = h - 18;
@@ -285,8 +289,10 @@ function frame(now) {
   // A car horn over Times Square now and then; sometimes the puppy answers.
   if (cityNow > .3 && !reduced) { honkIn -= dt; if (honkIn < 0) { honkIn = 7 + Math.random() * 10; sound.honk(); } }
   // The street and the air move by themselves; past them the frame changes only when the width does.
-  const moving = !reduced && !document.hidden && (lw < 3 || (wavesMove && lw < 4.6));
-  if (w && range && (dirty || moving)) { draw(); if (dirty) readout(); dirty = redInk.settling(); }
+  // Light's waves move too, in their own strip, which is drawn alone when nothing else changes.
+  const moving = !reduced && !document.hidden && lw < 3;
+  if (w && range && (dirty || moving)) { draw(); if (dirty) readout(); dirty = settling; }
+  else if (w && range && wavesMove && !reduced && !document.hidden) drawWaves();
   requestAnimationFrame(frame);
 }
 
@@ -294,7 +300,7 @@ function resize() {
   const r = canvas.getBoundingClientRect(), dpr = Math.min(1.65, devicePixelRatio || 1);
   if (!r.width) return;
   w = r.width; h = r.height; canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  redInk.fit(58, waveRoom(w).room);
+  stripTall = waveRoom(w).tall; strip.style.height = stripTall + "px"; strip.width = Math.round(w * dpr); strip.height = Math.round(stripTall * dpr); sctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   measure(); set(lw);
 }
 
@@ -378,6 +384,10 @@ canvas.addEventListener("pointermove", e => {
   canvas.style.cursor = hit && (waveNote(hit) || noteFor(hit)) ? "pointer" : "";
 });
 canvas.addEventListener("dblclick", () => setTurned(false));
+// Pressing a wave's lane opens its note.
+const laneAt = e => { const r = strip.getBoundingClientRect(); return waveAt(e.clientX - r.left, e.clientY - r.top); };
+strip.addEventListener("click", e => { const hit = laneAt(e); if (hit) openNote(waveNote(hit), hit); });
+strip.addEventListener("pointermove", e => { strip.style.cursor = laneAt(e) ? "pointer" : ""; });
 $("#level").addEventListener("click", () => setTurned(false));
 
 Z.onFrame(() => { dirty = true; });

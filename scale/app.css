@@ -4,7 +4,9 @@
 .page-opening .intro{font-size:18px;color:var(--ink);margin-bottom:30px}
 .layout{grid-template-columns:minmax(0,1fr) 230px}
 .column{min-width:0}
-.stage{background:#0c1512}.stage canvas{height:min(760px,78vh);min-height:440px;touch-action:none;cursor:grab}.stage canvas:active{cursor:grabbing}
+.stage{background:#0c1512}.stage #view{height:min(700px,68vh);min-height:400px;touch-action:none;cursor:grab}.stage #view:active{cursor:grabbing}
+/* The wavelengths' strip under the frame; app.js sets its height. */
+.stage #waves{height:160px;border-top:1px solid var(--line);touch-action:pan-y}
 .stage canvas:focus-visible{outline-offset:-3px}
 .stage .hud{display:flex;flex-direction:column;gap:2px;line-height:1.35;text-shadow:0 1px 3px #000c,0 0 12px #0008}
 .stage .hud .mono{color:#b9c8bd}.stage .hud b{font:500 19px/1.2 system-ui,sans-serif;color:#f2f1e7;letter-spacing:-.2px}
@@ -22,7 +24,7 @@
 @media(max-width:850px){.layout{grid-template-columns:minmax(0,1fr)}.side{display:flex;padding-top:4px;min-width:0}.readout .note{min-height:0}
   .stops{flex-direction:row-reverse;justify-content:flex-end;overflow-x:auto;max-width:100%;border-left:0;border-top:1px solid var(--line);padding-bottom:6px;scrollbar-width:thin}
   .stops button{white-space:nowrap;margin:-1px 0 0;border-left:0;border-top:1px solid transparent;padding:9px 11px}.stops button[aria-current]{border-top-color:var(--lime)}}
-@media(max-width:540px){.stage canvas{height:62vh;min-height:360px}.stage .stage-label{display:none}.scale-bar .mono{display:none}.page-opening .intro{font-size:16px}}
+@media(max-width:540px){.stage #view{height:54vh;min-height:330px}.stage .stage-label{display:none}.scale-bar .mono{display:none}.page-opening .intro{font-size:16px}}
 details a{color:var(--lime)}
 
 .stage{position:relative}

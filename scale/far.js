@@ -182,7 +182,7 @@ function dots(ctx, w, h, right, down, px, ox, oy, W, alpha) {
     // galaxies in a seventh of the pixels): a pixel with the usual sum comes out at about a third.
     let lit = 0, total = 0;
     for (let i = 0; i < sums.length; i++) { const v = sums[i]; if (v > 0) { lit++; total += v; } }
-    const gain = clamp(.45 / Math.pow(total / (lit || 1), .8), .2, 1.5), out = new Uint32Array(image.data.buffer);
+    const gain = clamp(.45 / Math.pow(total / (lit || 1), .8), .05, 1.5), out = new Uint32Array(image.data.buffer);
     // (A table from sum to colour, 64 steps to a galaxy's worth of light, saves working it out for every pixel.)
     for (let n = 1; n < TONES.length; n++) {
       const t = 1 - Math.exp(-Math.pow(n / 64, .8) * gain);

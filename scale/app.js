@@ -11,7 +11,7 @@ import { waves, waveNote, waveRoom, waveAt } from "./waves.js";
 import { giants } from "./giants.js";
 // The shared zoom's words keep clear of this frame's edges; it has no header or rail over it.
 redInk.links(t => { const n = waveNote(t) || noteFor(t, cosmicZoom.galaxies || []); return !!(n && n.body); });
-redSizes.layout({ chrome: 0 }); redInk.fit(58, 40);                 // names keep off the readout at the top and the ruler at the foot
+redSizes.layout({ chrome: 0, press: true }); redInk.fit(40, 40);                 // names keep off the frame's top line and the ruler at its foot (the readout is taken in draw)
 import * as far from "./far.js";
 
 const Z = cosmicZoom, AU = 1.495978707e11, LY = far.LY, EARTH = 6.378137e6, PLANCK = 1.616255e-35;
@@ -163,6 +163,9 @@ let texts = [];
     return most === undefined ? fill(t, x, y) : fill(t, x, y, most);
   };
 }
+// What is at a point of the frame: a name or description written there, a thing in the street,
+// or, in the zoom below 8 m, a named thing itself.
+const thingAt = (x, y) => textAt(x, y) || (cityFound && cityFound.pick ? cityFound.pick(x, y) : null) || (lw < Math.log10(8) ? redSizes.pick(x, y) : null);
 // The text at a point: the whole name for either line of one written on two (red/ink.js).
 function textAt(x, y) {
   for (let i = texts.length - 1; i >= 0; i--) { const r = texts[i]; if (x > r.x0 - 6 && x < r.x1 + 6 && y > r.y0 - 6 && y < r.y1 + 6) return redInk.whole(r.t); }
@@ -173,6 +176,8 @@ function draw() {
   const W = 10 ** lw;
   texts = []; redInk.begin(); redInk.take(0, 0, 220, 86);       // names keep off the frame-width readout
   limit(W); V = blend(R, cityPose(), city(W));
+  // The surveys' galaxies are fetched once the frame is out past the Earth, before they are needed.
+  if (lw > range.globe) far.load(() => { dirty = true; });
   // Each scene leaves the context as it found it; the frame always starts opaque.
   ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; ctx.fillStyle = "#0c1512"; ctx.fillRect(0, 0, w, h);
   ctx.save();
@@ -373,14 +378,14 @@ for (const type of ["pointerup", "pointercancel"]) canvas.addEventListener(type,
   touches.delete(e.pointerId); pinch = 0;
   // A press that did not drag, on a name or a description, opens its note.
   if (type === "pointerup" && pressAt && Math.hypot(e.clientX - pressAt.x, e.clientY - pressAt.y) < 6 && performance.now() - pressAt.t < 600) {
-    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, hit = textAt(x, y) || (cityFound && cityFound.pick ? cityFound.pick(x, y) : null);
+    const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, hit = thingAt(x, y);
     if (hit) openNote(waveNote(hit) || noteFor(hit, cosmicZoom.galaxies || []), hit);
   }
   pressAt = null;
 });
 canvas.addEventListener("pointermove", e => {
   if (e.pointerType !== "mouse" || e.buttons) return;
-  const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, hit = textAt(x, y) || (cityFound && cityFound.pick ? cityFound.pick(x, y) : null);
+  const r = canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top, hit = thingAt(x, y);
   canvas.style.cursor = hit && (waveNote(hit) || noteFor(hit)) ? "pointer" : "";
 });
 canvas.addEventListener("dblclick", () => setTurned(false));

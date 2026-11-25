@@ -87,7 +87,7 @@ const ease = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x);
 const lanes = [null, null, null];
 // The strip for a frame w wide: how many lanes, how far apart, the waves' height and the strip's.
 export function waveRoom(w) {
-  const narrow = w < 700, count = narrow ? 2 : 3, amp = narrow ? 8 : 9, pitch = narrow ? 56 : 44, head = 22;
+  const narrow = w < 700, count = narrow ? 2 : 3, amp = 8, pitch = narrow ? 48 : 46, head = 22;
   return { narrow, count, amp, pitch, head, tall: head + count * pitch + 6 };
 }
 // Where each lane was drawn last, for a press.
@@ -110,28 +110,41 @@ export function waves(ctx, w, h, W, time) {
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   // What the strip is, at its head; and that nothing marked fits, when nothing does.
   I.style(ctx); ctx.globalAlpha = .8; ctx.fillStyle = I.DIM;
-  ctx.fillText(lanes.some(Boolean) ? 'WAVELENGTHS AT THIS SCALE' : 'WAVELENGTHS AT THIS SCALE · NONE MARKED AT THIS WIDTH', edge, head / 2 + 2);
+  ctx.fillText('WAVELENGTHS AT THIS SCALE', edge, head / 2 + 2);
   // Names first, so the waves can pass behind every word.
   const marks = [], plates = [];
   rows = [];
   for (let k = 0; k < count; k++) {
     const v = lanes[k]; if (!v) continue;
-    // A lane: the name on its plate, one wavelength marked between two ticks, and the wave under
-    // them. On a wide strip the mark follows the name on its row; on a narrow one the name has
-    // the row, with the figure at its far end, and the mark is under it.
-    const a = strength(v), l = v.length * px, top = head + k * pitch, ty = top + 13, yb = narrow ? top + 30 : ty, y0 = yb + amp + (narrow ? 7 : 11);
+    // A lane: the name on its plate, under it one wavelength marked from crest to crest between
+    // two ticks, and the wave. On a narrow strip the figure is written apart from the name: at
+    // the far end of the name's row, or after the mark, wherever there is room.
+    const a = strength(v), l = v.length * px, top = head + k * pitch, ty = top + 11, yb = top + 25, y0 = yb + 4 + amp, x1 = edge;
     I.style(ctx); const words = narrow ? v.lines.slice(0, 1) : [v.text], tw = I.measure(ctx, I.caps(words[0]));
-    const x1 = narrow ? edge : Math.min(edge + tw + 2 * I.PX + 12, w - edge - l);
     I.block(ctx, words, edge + I.PX, ty, a);
-    if (narrow) I.note(ctx, v.figure, w - edge, ty, a, 'right', I.DIM);
-    plates.push([edge - 2, ty - I.LINE / 2 - I.PY - 2, tw + 2 * I.PX + 4, I.LINE + 2 * I.PY + 4]);
+    if (narrow) {
+      const fw = I.measure(ctx, I.caps(v.figure));
+      if (edge + tw + 2 * I.PX + 12 + fw < w - edge) I.note(ctx, v.figure, w - edge, ty, a, 'right', I.DIM);
+      else if (x1 + l + 10 + fw < w - edge) I.note(ctx, v.figure, x1 + l + 10, yb, a, 'left', I.DIM);
+    }
+    plates.push([edge - 2, ty - I.LINE / 2 - I.PY - 2, tw + 2 * I.PX + 4, I.LINE + 2 * I.PY + 3]);
     marks.push({ v, a, l, y0, yb, x1 }); rows.push({ top, tall: pitch, text: v.text });
+  }
+  // When no wave fits the frame, the nearest shorter and longer ones are named, to press.
+  if (!marks.length) {
+    const fits = v => v.length * px, shorter = WAVES.filter(v => fits(v) < 32).sort((a, b) => b.length - a.length)[0], longer = WAVES.filter(v => fits(v) > .68 * w).sort((a, b) => a.length - b.length)[0];
+    [[shorter, 'Next shorter'], [longer, 'Next longer']].filter(e => e[0]).forEach(([v, lead], k) => {
+      const top = head + k * pitch, ty = top + 13, lw = I.measure(ctx, I.caps(lead));
+      I.note(ctx, lead, edge, ty, .8, 'left', I.DIM);
+      if (narrow) I.block(ctx, v.lines.slice(0, 1), edge + I.PX, ty + 21, .85); else I.block(ctx, [v.text], edge + lw + 12 + I.PX, ty, .85);
+      rows.push({ top, tall: pitch, text: v.text });
+    });
   }
   const clear = (x, y) => plates.every(p => x < p[0] || x > p[0] + p[2] || y < p[1] || y > p[1] + p[3]);
   for (const { v, a, l, y0, yb, x1 } of marks) {
     const light = v.family === 'light';
     ctx.globalAlpha = a * .9; ctx.strokeStyle = v.ink; ctx.lineWidth = 1; ctx.setLineDash([]);
-    ctx.beginPath(); ctx.moveTo(x1, yb - 4); ctx.lineTo(x1, yb + 4); ctx.moveTo(x1, yb); ctx.lineTo(x1 + l, yb); ctx.moveTo(x1 + l, yb - 4); ctx.lineTo(x1 + l, yb + 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, yb - 3); ctx.lineTo(x1, yb + 4); ctx.moveTo(x1, yb); ctx.lineTo(x1 + l, yb); ctx.moveTo(x1 + l, yb - 3); ctx.lineTo(x1 + l, yb + 4); ctx.stroke();
     // The wave across the whole strip, with a crest under the first tick.
     const phase = light && time ? time * 28 / l * TAU : 0, step = Math.max(1.5, Math.min(4, l / 16));
     if (light && time) moves = true;

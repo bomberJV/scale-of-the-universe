@@ -6,7 +6,7 @@
 .column{min-width:0}
 .stage{background:#0c1512}.stage #view{height:min(700px,68vh);min-height:400px;touch-action:none;cursor:grab}.stage #view:active{cursor:grabbing}
 /* The wavelengths' strip under the frame; app.js sets its height. */
-.stage #waves{height:160px;border-top:1px solid var(--line);touch-action:pan-y}
+.stage #waves{height:166px;border-top:1px solid var(--line);touch-action:pan-y}
 .stage canvas:focus-visible{outline-offset:-3px}
 .stage .hud{display:flex;flex-direction:column;gap:2px;line-height:1.35;text-shadow:0 1px 3px #000c,0 0 12px #0008}
 .stage .hud .mono{color:#b9c8bd}.stage .hud b{font:500 19px/1.2 system-ui,sans-serif;color:#f2f1e7;letter-spacing:-.2px}

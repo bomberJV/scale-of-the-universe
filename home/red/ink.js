@@ -235,6 +235,6 @@ const redInk = (() => {
     out = { lines, strong: strongOut }; wrapMemo.set(key, out); return out;
   }
 
-  return { FONT, LINE, PX, PY, scale, links, whole, INK, DIM, SOFT, PLATE, LEADER, ACCENT, PLATE_ALPHA, LEADER_ALPHA, room, fit, margin, begin, settling, take, free, caps, style, measure,
+  return { FONT, LINE, PX, PY, scale, links, opens, whole, INK, DIM, SOFT, PLATE, LEADER, ACCENT, PLATE_ALPHA, LEADER_ALPHA, room, fit, margin, begin, settling, take, free, caps, style, measure,
     block, tag, aside, caption, note, figure, figureWidth, dot, leader };
 })();

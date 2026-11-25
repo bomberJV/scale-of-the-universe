@@ -4,9 +4,11 @@
 
 Two redshift surveys, read with the standard library only:
 
-  2MRS   The 2MASS Redshift Survey (Huchra et al. 2012, ApJS 199, 26), table 3 from the CDS:
-         43,533 galaxies brighter than Ks = 11.75 over the whole sky outside the Milky Way's
-         plane (|b| > 5 degrees, 8 toward the bulge). Every galaxy past the near limit is kept.
+  2MRS   The 2MASS Redshift Survey (Huchra et al. 2012, ApJS 199, 26), table 3 from the CDS
+         (its files, or the same table through VizieR or a mirror of it when those cannot be
+         had): 43,533 galaxies brighter than Ks = 11.75 over the whole sky outside the Milky
+         Way's plane (|b| > 5 degrees, 8 toward the bulge). Every galaxy between the near limit
+         (NEAR, where a redshift says little about distance) and TWOMRS_REACH is kept.
   SDSS   The Sloan Digital Sky Survey's main galaxy sample (Strauss et al. 2002), from Data
          Release 17's SkyServer: spectra classed as galaxies with a clean redshift between
          SDSS_Z[0] and SDSS_Z[1], one in SDSS_KEEP of them (chosen by plate and fibre number,
@@ -103,7 +105,9 @@ def place(direction, cz):
 def columns(readme, table):
     """Byte ranges by label from a CDS ReadMe's byte-by-byte description of `table`."""
     lines = readme.splitlines()
-    start = next(i for i, l in enumerate(lines) if l.startswith("Byte-by-byte Description of file") and table in l)
+    start = next((i for i, l in enumerate(lines) if l.startswith("Byte-by-byte Description of file") and table in l), None)
+    if start is None:
+        raise IOError(f"no byte-by-byte description of {table} in the ReadMe")
     out, rules = {}, 0
     for l in lines[start + 1:]:
         if l.startswith("-----"):
@@ -125,7 +129,7 @@ def twomrs_rows():
     try:
         yield from twomrs_files()
         return
-    except (IOError, StopIteration) as e:
+    except IOError as e:
         say(f"  the CDS files could not be read ({e}); trying VizieR")
     text = fetch(VIZIER, tries=2, timeout=600).decode("utf-8", "replace")
     lines = [l for l in text.splitlines() if l and not l.startswith("#")]
@@ -229,6 +233,7 @@ def sdss():
 
 
 def pack(points):
+    points = sorted(points)     # the same file whatever order the rows came in
     reach = max(max(abs(c) for c in p) for p in points)
     unit = math.ceil(reach / 32767 / 100) * 100
     data = b"".join(struct.pack("<3h", *(round(c / unit) for c in p)) for p in points)

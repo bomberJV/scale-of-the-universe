@@ -741,7 +741,7 @@ const redSizes = (() => {
         P.e([x, y, 2], [17, 17, 9], tone(sheet, -.45));
       }
       B.dim([-60, 0, 10], [60, 0, 10], [0, -1, 0], -92, '120 nm');
-      B.name([60, -150, 10], 'Nuclear pore · in the nucleus’s envelope', { leader: true });
+      B.name([33, -33, 12], 'Nuclear pore · in the nucleus’s envelope', { size: 2.2e-7, leader: true });
       B.name([-420, 260, 0], 'Nuclear envelope · two membranes round the DNA', { leader: true });
       // A microtubule over the envelope, 25 nm across, and a kinesin walking along it with a
       // vesicle: two heads stepping 8 nm at a time on a stalk about 80 nm long (Vale 2003).
@@ -760,16 +760,22 @@ const redSizes = (() => {
     const ac = ADENO, corners = icosa(V, ac, 45, '#6fbf8a', mul(rotZ(.3 + spin), rotX(.55)));
     for (const v of corners) { const d = unit(sub(v, ac)), end = add(v, times(d, 28)); V.k(v, 1.3, end, 1.1, '#b8f0c8'); V.e(end, [4.5, 4.5, 4.5], '#b8f0c8'); }
     V.dim([ac[0] - 45, ac[1], ac[2]], [ac[0] + 45, ac[1], ac[2]], [0, 1, 0], ac[1] + 110, '90 nm');
-    V.name([ac[0] - 40, ac[1] + 60, ac[2] + 40], 'Adenovirus · about 90 nm, docking at a pore', { size: 1.6e-7, leader: true });
-    const said = {};
+    V.name([ac[0] - 20, ac[1] + 30, ac[2] + 30], 'Adenovirus · about 90 nm, docking at a pore', { size: 1.6e-7, leader: true });
+    // Of several alike (two influenza viruses, three rhinoviruses, the ribosomes), the one named is
+    // the one nearest the middle of the frame: naming the first in the list left the one in view
+    // without a name whenever the first was outside the frame.
+    const off = p => { const q = V.pl.s(p); return Math.max(Math.abs(q[0] - view.w / 2) / view.w, Math.abs(q[1] - view.h / 2) / view.h); };   // as a share of the frame, so one inside it wins
+    const nearest = {};
+    for (const [n, [kind, c0]] of VIRUSES.entries()) if (nearest[kind] === undefined || off(c0) < off(VIRUSES[nearest[kind]][1])) nearest[kind] = n;
     for (const [n, [kind, c0]] of VIRUSES.entries()) {
       const c = add(c0, [Math.sin(t * .4 + n) * 4, Math.cos(t * .3 + n) * 4, 0]), q = mul(rotZ(n + spin), rotX(n * .7));
       if (kind === 'flu') { V.e(c, [50, 50, 50], '#5f8fbf'); FLU_SPIKES.forEach((d0, k) => { const d = apply(q, d0); V.k(add(c, times(d, 48)), 2.4, add(c, times(d, 62)), 2.8, k % 6 ? '#9fd0ff' : '#ffd36a'); }); }
       else if (kind === 'covid') { V.e(c, [45, 45, 45], '#b85a4a'); COVID_SPIKES.forEach(d0 => { const d = apply(q, d0); V.k(add(c, times(d, 43)), 1.7, add(c, times(d, 55)), 1.7, '#ff8f7a'); V.e(add(c, times(d, 59)), [5, 5, 5], '#ff8f7a'); }); }
       else icosa(V, c, 15, '#ffd36a', q);
-      if (!said[kind]) { said[kind] = 1; V.name(add(c, [0, kind === 'rhino' ? 30 : 75, 0]), { flu: 'Influenza virus · about 100 nm', covid: 'SARS-CoV-2 · about 100 nm', rhino: 'Rhinovirus · about 30 nm' }[kind], { leader: true, size: kind === 'rhino' ? 5.4e-8 : 1.8e-7 }); }
+      if (nearest[kind] === n) V.name(add(c, [0, kind === 'rhino' ? 6 : 20, 0]), { flu: 'Influenza virus · about 100 nm', covid: 'SARS-CoV-2 · about 100 nm', rhino: 'Rhinovirus · about 30 nm' }[kind], { leader: true, size: kind === 'rhino' ? 5.4e-8 : 1.8e-7 });
     }
-    for (const [i, p] of RIBOSOMES.entries()) { V.e(p, [12.5, 12.5, 12.5], '#f2d27a'); V.e(add(p, [5, 4, 5]), [8, 8, 8], '#c9a240', { bias: 2 }); if (i === 2) V.name(p, 'Ribosome · about 25 nm', { leader: true, size: 4.5e-8 }); }
+    const ribosome = RIBOSOMES.reduce((a, p) => off(p) < off(a) ? p : a);
+    for (const p of RIBOSOMES) { V.e(p, [12.5, 12.5, 12.5], '#f2d27a'); V.e(add(p, [5, 4, 5]), [8, 8, 8], '#c9a240', { bias: 2 }); if (p === ribosome) V.name(p, 'Ribosome · about 25 nm', { leader: true, size: 4.5e-8 }); }
   }
 
   // ── the frames things are drawn in ───────────────────────────────────────────────────────
@@ -1224,7 +1230,10 @@ const redSizes = (() => {
   // The frame's usable shorter side, in pixels: the screen less what covers it (on red's
   // homepage, the header and the rail; layout() sets it for a page without them).
   let CHROME = 120;
-  const layout = ({ chrome = 120 } = {}) => { CHROME = chrome; };
+  // press: the page opens a note when a named thing is pressed (see pick), so more names are
+  // written where there is room and the named things left without one are marked with a dot.
+  let PRESS = false;
+  const layout = ({ chrome = 120, press = false } = {}) => { CHROME = chrome; PRESS = press; };
   const short = (w, h) => Math.max(160, Math.min(w, h - CHROME));
   // The street's last framing, as a shorter side: a 1.75 m figure would fill `fillOf` of the frame's height.
   const first = (w, h) => EYE * short(w, h) / (FRAMING * fillOf(w, h) * h);
@@ -1288,12 +1297,22 @@ const redSizes = (() => {
 
   // ── the marks ────────────────────────────────────────────────────────────────────────────
   let bounds = [84, 58];                                            // labels stay below the header and above the rail
+  // How much of a measure shows: it goes with its line, fading as the line's middle nears the
+  // frame's edge and gone once that has left (its figure used to be held at the edge), and
+  // fading as the line gets too short to read.
+  function dimShows(d, w, h) {
+    const lx = d.B[0] - d.A[0], ly = d.B[1] - d.A[1], len = Math.hypot(lx, ly), mx = (d.A[0] + d.B[0]) / 2, my = (d.A[1] + d.B[1]) / 2;
+    return (1 - ease((Math.max(Math.abs(mx - w / 2) / (w / 2), Math.abs(my - h / 2) / (h / 2)) - .86) / .14)) * (d.short ? ease((len - 3) / 7) : ease((len - 8) / 22));
+  }
+  // How much of a name shows: it goes with its point, fading as the point nears the edge of the
+  // frame's free height and gone once the point has left (it used to be held at the edge,
+  // pointing off the frame).
+  const nameShows = (n, w, h) => 1 - ease((Math.max(Math.abs(n.at[0] - w / 2) / (w / 2), Math.abs(n.at[1] - (bounds[0] + h - bounds[1]) / 2) / ((h - bounds[0] - bounds[1]) / 2)) - .84) / .16);
   function dimension(ctx, d, w, h) {
     const { a, b, A, B: E } = d, lx = E[0] - A[0], ly = E[1] - A[1], len = Math.hypot(lx, ly);
     // A measure goes with its line: it fades as the line's middle nears the frame's edge and is
     // not drawn once that has left (its figure used to be held at the edge).
-    const mx = (A[0] + E[0]) / 2, my = (A[1] + E[1]) / 2, edge = 1 - ease((Math.max(Math.abs(mx - w / 2) / (w / 2), Math.abs(my - h / 2) / (h / 2)) - .86) / .14);
-    const show = d.alpha * edge * (d.short ? ease((len - 3) / 7) : ease((len - 8) / 22)); if (show < .02) return;
+    const show = d.alpha; if (show < .02) return;                  // zoom() has already faded it toward the frame's edge
     const ux = lx / len, uy = ly / len;
     ctx.save(); ctx.globalAlpha = show * .9; ctx.strokeStyle = redInk.ACCENT; ctx.lineWidth = 1; ctx.lineCap = 'butt'; ctx.beginPath();
     for (const [f, e] of [[a, A], [b, E]]) { const ex = e[0] - f[0], ey = e[1] - f[1], el = Math.hypot(ex, ey); if (el < 6) continue; const nx = ex / el, ny = ey / el; ctx.moveTo(f[0] + nx * 4, f[1] + ny * 4); ctx.lineTo(e[0] + nx * 5, e[1] + ny * 5); }
@@ -1313,17 +1332,15 @@ const redSizes = (() => {
   // over it, moved up or down off words already written.
   const steps = new Map();
   function label(ctx, n, w, h) {
-    if (n.alpha < .03) return;
+    if (n.alpha < .03) return false;
     const I = redInk;
-    // A name goes with its point: it fades as the point nears the frame's edge and is not
-    // written once the point has left (it used to be held at the edge, pointing off the frame).
-    const edge = 1 - ease((Math.max(Math.abs(n.at[0] - w / 2) / (w / 2), Math.abs(n.at[1] - (bounds[0] + h - bounds[1]) / 2) / ((h - bounds[0] - bounds[1]) / 2)) - .84) / .16), alpha = n.alpha * edge;
-    if (alpha < .03) return;
-    if (n.leader) { I.tag(ctx, n.lines, n.at[0], n.at[1], w, h, alpha); return; }
+    const alpha = n.alpha;                                          // zoom() has already faded it toward the frame's edge
+    if (n.leader) return I.tag(ctx, n.lines, n.at[0], n.at[1], w, h, alpha);
     // Above the point, then higher or lower in steps; the step that worked last frame first, and
     // nowhere at all rather than over other words.
     const x = clamp(n.at[0], 10, w - 10), y0 = clamp(n.at[1] - 10, bounds[0], h - bounds[1]), key = n.lines[0], from = steps.get(key) || 0;
-    for (let i = 0; i < 6; i++) { const k = (from + i) % 6, y = clamp(y0 + [0, -24, 24, -48, 48, -72][k], bounds[0], h - bounds[1]); if (I.block(ctx, n.lines, x, y, alpha, { align: 'center', avoid: true, within: w })) { steps.set(key, k); return; } }
+    for (let i = 0; i < 6; i++) { const k = (from + i) % 6, y = clamp(y0 + [0, -24, 24, -48, 48, -72][k], bounds[0], h - bounds[1]); if (I.block(ctx, n.lines, x, y, alpha, { align: 'center', avoid: true, within: w })) { steps.set(key, k); return true; } }
+    return false;
   }
 
   // ── a frame ──────────────────────────────────────────────────────────────────────────────
@@ -1395,17 +1412,39 @@ const redSizes = (() => {
     // labels need to scale with the objects"): the usual size for a thing about a quarter of the
     // frame across, up to 1.5 times for one filling it, down to 0.85 for a speck.
     const sized = x => redInk.scale(x.size ? clamp(Math.pow(x.size * view.px / (Math.min(w, h) * .6), .3), .85, 1.5) : 1);
+    // Only what is in the frame is a candidate. The few written used to be chosen before this was
+    // known, so names of things outside the frame took the places and the thing in the middle
+    // went unnamed (Brandon, 2026-11-25: "things like the nuclear pore and the virus are
+    // unlabled").
+    all = names.map(n => n.lines[0]);
+    for (const d of dims) d.alpha *= dimShows(d, w, h);
+    for (const n of names) n.alpha *= nameShows(n, w, h);
+    // Every named thing in the frame can be pressed, whether or not its name is among the few written.
+    picks = o.only ? [] : names.filter(n => n.alpha > .15 && redInk.opens(n.lines[0])).map(n => ({ x: n.at[0], y: n.at[1], r: clamp((n.size || S * .15) * view.px * .5, 16, 64), text: n.lines[0] }));
     for (const d of o.only ? dims : fewest(dims, w < 600 ? 2 : 3, S, d => d.text)) { sized(d); dimension(ctx, d, w, h); }
-    for (const n of o.only ? names : fewest(names, w < 600 ? 3 : 4, S, n => n.lines[0])) { sized(n); label(ctx, n, w, h); }
+    const written = new Set();
+    for (const n of o.only ? names : fewest(names, w < 600 ? 3 : PRESS ? 5 : 4, S, n => n.lines[0])) { sized(n); if (label(ctx, n, w, h)) written.add(n.lines[0]); }
     redInk.scale(1);
+    // A named thing whose name is not written is marked with the dot a name's leader starts from: pressing it opens its note.
+    // (With a dark edge, so it shows on a thing of its own colour.)
+    if (PRESS) { ctx.save(); for (const p of picks) if (!written.has(p.text)) { ctx.globalAlpha = .75; ctx.fillStyle = redInk.PLATE; ctx.beginPath(); ctx.arc(p.x, p.y, 4.5, 0, TAU); ctx.fill(); redInk.dot(ctx, p.x, p.y, .9); } ctx.restore(); }
     // The grid's square, in the corner.
     if (grid && grid.show > .05 && !o.only) redInk.note(ctx, 'Grid ' + lengthName(grid.step), w - redInk.margin(w), redInk.room.top + 10, grid.show * .8, 'right', redInk.DIM);
   }
+  // The named thing at a point of the last frame drawn (the name as written, for its note), or null.
+  let picks = [], all = [];
+  function pick(x, y) {
+    let best = null, least = 1;
+    for (const p of picks) { const d = Math.hypot(x - p.x, y - p.y) / p.r; if (d < least) { least = d; best = p; } }
+    return best ? best.text : null;
+  }
+  // Every name the last frame had, in view or not (for the check that each has a note).
+  const named = () => all.slice();
   // Without motion: the DNA, one base pair atom by atom and a water molecule beside it, measured.
   function still(ctx, w, h) {
     const P = THINGS[index.pair], W = P.span * w / short(w, h);
     zoom(ctx, w, h, W, 2.2, null, { centre: P.centre, only: ['pair', 'nucleosome'], measured: ['pair'] });
   }
 
-  return { zoom, still, layout, short, first, STOPS, SIZES, THINGS, centreAt };
+  return { zoom, still, layout, short, first, pick, named, STOPS, SIZES, THINGS, centreAt };
 })();

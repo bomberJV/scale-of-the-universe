@@ -148,10 +148,15 @@ let pane = null, paneKey = '', sums = null, image = null;
 const TONES = new Uint32Array(2049);
 function dots(ctx, w, h, right, down, px, ox, oy, W, alpha) {
   const s = Math.min(1.65, ctx.getTransform().a || 1, Math.sqrt(1.4e6 / (w * h))), bw = Math.max(2, Math.round(w * s)), bh = Math.max(2, Math.round(h * s));
-  const key = [bw, bh, px, ox, oy, right, down].join();
+  pane ??= document.createElement('canvas');
+  // The dots' two colours, faint and crowded, as the page's theme turns them: the site's theme
+  // changes every colour a canvas is given (in light mode the sky is pale and the galaxies dark),
+  // but these pixels are written directly, so the colours are passed through a context first.
+  const pen = pane.getContext('2d'), inked = c => { pen.fillStyle = c; const v = String(pen.fillStyle); return /^#[0-9a-f]{6}$/i.test(v) ? v : c; };
+  const faint = inked('#c4cce8'), crowded = inked('#fff2d6'), rgb = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16));
+  const key = [bw, bh, px, ox, oy, right, down, faint, crowded].join();
   if (key !== paneKey) {
     paneKey = key;
-    pane ??= document.createElement('canvas');
     if (pane.width !== bw || pane.height !== bh) { pane.width = bw; pane.height = bh; sums = new Float32Array(bw * bh); image = pane.getContext('2d').createImageData(bw, bh); }
     sums.fill(0);
     // A galaxy is a soft dot about three pixels across while there are few enough light-years to
@@ -184,12 +189,13 @@ function dots(ctx, w, h, right, down, px, ox, oy, W, alpha) {
     for (let i = 0; i < sums.length; i++) { const v = sums[i]; if (v > 0) { lit++; total += v; } }
     const gain = clamp(.45 / Math.pow(total / (lit || 1), .8), .05, 1.5), out = new Uint32Array(image.data.buffer);
     // (A table from sum to colour, 64 steps to a galaxy's worth of light, saves working it out for every pixel.)
+    const lo = rgb(faint), hi = rgb(crowded);
     for (let n = 1; n < TONES.length; n++) {
       const t = 1 - Math.exp(-Math.pow(n / 64, .8) * gain);
-      TONES[n] = (255 * t) << 24 | (232 - 18 * t) << 16 | (204 + 38 * t) << 8 | (196 + 59 * t);
+      TONES[n] = (255 * t) << 24 | (lo[2] + (hi[2] - lo[2]) * t) << 16 | (lo[1] + (hi[1] - lo[1]) * t) << 8 | (lo[0] + (hi[0] - lo[0]) * t);
     }
     for (let i = 0; i < sums.length; i++) { const v = sums[i]; out[i] = v > 0 ? TONES[Math.min(TONES.length - 1, (v * 64 + 1) | 0)] : 0; }
-    pane.getContext('2d').putImageData(image, 0, 0);
+    pen.putImageData(image, 0, 0);
   }
   ctx.save(); ctx.globalAlpha = alpha; ctx.drawImage(pane, 0, 0, w, h); ctx.restore();
 }

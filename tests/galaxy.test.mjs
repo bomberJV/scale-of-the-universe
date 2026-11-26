@@ -64,8 +64,8 @@ test('the Local arm is drawn as full as the arms either side of it', () => {
   }
   const beside = (density.sagittarius + density.perseus) / 2;
   assert.ok(density.local > .8 * beside && density.local < 1.2 * beside, JSON.stringify(density));
-  // The light along it is as strong, and it ends where the measurements do: nothing past 34° or −8°.
-  const light = m.lanes[m.lanes.length - 1];
+  // The light along it is as strong, and toward Cygnus it ends where the measurements do: nothing past 34°.
+  const light = m.lanes.find((lane) => lane.of === 'Local arm');
   assert.equal(light.strength, 1);
   assert.equal(light.round, true);
   assert.match(journey, /g\.lineCap=lane\.round\?'round':'butt'/);
@@ -85,5 +85,35 @@ test('the note on the Local arm does not call it short or minor', async () => {
   const { NOTES } = await import('../scale/notes.js');
   const text = NOTES['local arm'].body.join(' ');
   assert.doesNotMatch(text, /short spiral arm|larger Perseus/);
+  assert.match(text, /bridges to the Sagittarius arm/);
+  assert.match(text, /runs into the stretch that radio maps give to the Perseus arm/);
   assert.match(text, /as actively as its neighbors/);
+});
+
+test('the Local arm is tied to the arms either side of it', () => {
+  // Brandon, 2026-11-26: "Do you not notice how the arm the sun sits in connects to nothing on
+  // either end????" It runs into the Perseus arm's line past the Sun (Poggio et al. 2021;
+  // arXiv:2605.12603) and a spur bridges it to the Sagittarius arm (Xu et al. 2016).
+  const kpc = m.kpc, off = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]) / kpc;
+  const nearest = (point, name) => Math.min(...m.lanes.filter((lane) => lane.of === name).flatMap((lane) => lane.at.map((at) => off(point, at))));
+  const local = m.lanes.find((lane) => lane.of === 'Local arm').at;
+  // Its light stops 5° short of the Perseus arm's line; by then the two are under half a kiloparsec apart.
+  assert.ok(nearest(local[local.length - 1], 'Perseus arm') < .5, `${nearest(local[local.length - 1], 'Perseus arm')} kpc from the Perseus arm`);
+  // At least 10 kpc long, as the young giants trace it.
+  let length = 0;
+  for (let i = 1; i < local.length; i++) length += off(local[i], local[i - 1]);
+  assert.ok(length > 10 && length < 12.5, `${length} kpc`);
+  // No gap along it: arm dots all the way, and on to the Perseus arm.
+  const dotsBy = (point) => { let n = 0; for (let i = 0; i < m.count; i++) if (m.kind[i] < 2 && Math.hypot(m.X[i] - point[0], m.Y[i] - point[1]) < .35 * kpc) n++; return n; };
+  for (let i = 0; i < local.length; i += 6) assert.ok(dotsBy(local[i]) >= 12, `${dotsBy(local[i])} dots by point ${i} of the Local arm`);
+  // The Sun is toward its inner edge: a third to half a kiloparsec inside its centre line.
+  const sun = Math.min(...local.map((at) => off(at, [0, 0])));
+  assert.ok(sun > .3 && sun < .5, `${sun} kpc`);
+  // The spur starts on the Local arm, ends on the Sagittarius arm and passes each of the five masers.
+  const line = m.spur.line;
+  assert.ok(nearest(line[0], 'Local arm') < .1);
+  assert.ok(nearest(line[line.length - 1], 'Sagittarius arm') < .1);
+  assert.equal(m.spur.masers.length, 5);
+  for (const maser of m.spur.masers) assert.ok(Math.min(...line.map((at) => off(at, maser))) < .2);
+  for (let i = 0; i < line.length; i += 6) assert.ok(dotsBy(line[i]) >= 8, `${dotsBy(line[i])} dots by point ${i} of the spur`);
 });

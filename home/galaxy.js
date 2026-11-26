@@ -46,17 +46,65 @@ const milkyWay = (() => {
     {name:'Scutum–Centaurus arm',label:[scutum(48),48],path:trace([{fit:scutum,from:104,to:0},{until:edge}])},
     {name:'Sagittarius arm',label:[sagittarius(-12),-12],path:[...inward(sagittarius,97),...trace([{fit:sagittarius,from:97,to:2},{until:edge}])]},
     {name:'Perseus arm',label:[perseus(22),22],path:[...inward(perseus,115),...trace([{fit:perseus,from:115,to:-23},{until:edge}])]},
-    // The Local arm is a segment: it has been measured over a quarter turn or less and is not
-    // carried on past that. It is no fainter than the others for it. Xu et al. 2013 (ApJ 769, 15)
-    // found its star formation, length and pitch to be those of an arm like Perseus or
-    // Sagittarius, not of a spur, and Reid et al. fit it as one. An earlier version drew it at
-    // 55% of the others, which left the Sun looking as if it sat in a gap between two arms
-    // (Brandon, 2026-11-25: "fix it so its accurate").
-    {name:'Local arm',label:[local(-7),-7],segment:true,path:trace([{fit:local,from:34,to:-8}])}
+    // The Local arm, the one the Sun is in. It is as full as the others (Xu et al. 2013, ApJ 769,
+    // 15: its star formation, length and pitch are those of an arm, not of a spur), and it is not
+    // a loose piece. Brandon, 2026-11-26: "Do you not notice how the arm the sun sits in connects
+    // to nothing on either end????" Three things are measured about where it goes:
+    //   - From 34° to the Sun it follows the maser fit, as before.
+    //   - Past the Sun it opens out. Gaia's hot stars trace it at least 4 kpc on into the third
+    //     quadrant (Poggio et al. 2021, A&A 651, A104: about R = 10 kpc at −20°), and young
+    //     giants about 2 kpc farther, to R = 11.3 kpc at −35° (arXiv:2605.12603). That is where
+    //     this model draws the Perseus arm: Reid et al. give those masers to Perseus. So the arm
+    //     runs into the Perseus arm's line there. Whether that stretch is Perseus or the Local arm
+    //     is a matter of naming that the papers dispute; that the stars are continuous is not.
+    //   - A spur leaves it at Cygnus X and bridges to the Sagittarius arm (below).
+    // Beyond 34° nothing has been measured, so that end thins out and stops.
+    {name:'Local arm'}
   ];
-  // A segment thins out over its last 4° at each end, where the measurements stop, about as
-  // far along the arm as the arm is wide.
-  const ends=(arm,i)=>arm.segment?Math.min(1,(i+.5)/8,(arm.path.length-.5-i)/8):1;
+  arms[4].path=outward();arms[4].label=arms[4].path.find(point=>point[1]===-7).slice(0,2);
+  // The Local arm's centre line: the maser fit down to 6°, then a pitch that grows to 24° by −6°
+  // and holds until the line meets the Perseus arm's, at about −34°.
+  function outward(){
+    const path=[],other=arms[3].path;
+    for(let a=34,R=local(34);;a-=.5){
+      if(a>=6)R=local(a);
+      path.push([R,a,true]);
+      const there=other.find(point=>point[1]===a);
+      if(there&&R>=there[0])break;
+      const t=Math.min(1,Math.max(0,(6-(a-.5))/12));
+      R*=Math.exp(.5*rad*Math.tan((11.4+12.6*t*t*(3-2*t))*rad));
+    }
+    return path;
+  }
+  // The Local arm thins out over its last 8° at the end no one has measured past, and over its
+  // last 6° where it runs into the Perseus arm, so the two are not counted twice there.
+  const ends=(arm,i)=>arm.name==='Local arm'?Math.min(1,(i+.5)/16,.25+(arm.path.length-.5-i)/16):1;
+  // The spur between the Local and Sagittarius arms (Xu et al. 2016, Sci. Adv. 2, e1600878):
+  // five masers with measured distances lie along it, and a lane of CO runs the same way from
+  // Cygnus X to the Sagittarius arm near longitude 50°. Longitude [deg] and distance [kpc] from
+  // that paper's tables; Reid et al. 2019 list the same five as the Local arm's spur.
+  const spurMasers=[[59.48,1.87],[59.78,2.16],[58.77,3.34],[59.83,3.95],[54.11,4.33]].map(([l,d])=>[d*Math.sin(l*rad),8.15-d*Math.cos(l*rad)]);
+  // Its line, as [kpc toward longitude 90°, kpc from the centre along the line to the Sun]: from
+  // the Local arm's centre line at Cygnus X, through the masers, to the Sagittarius arm's.
+  const spur=(()=>{
+    const from=(R,a)=>[R*Math.sin(a*rad),R*Math.cos(a*rad)],mid=(a,b)=>[(a[0]+b[0])/2,(a[1]+b[1])/2];
+    const through=[from(local(9.5),9.5),mid(spurMasers[0],spurMasers[1]),spurMasers[2],mid(spurMasers[3],spurMasers[4]),from(sagittarius(37.5),37.5)];
+    // A Catmull-Rom curve through those points, then points 70 pc apart along it.
+    const fine=[];
+    for(let i=0;i+1<through.length;i++){
+      const [p0,p1,p2,p3]=[through[Math.max(0,i-1)],through[i],through[i+1],through[Math.min(through.length-1,i+2)]];
+      for(let k=0;k<40;k++){const t=k/40;fine.push([0,1].map(c=>.5*(2*p1[c]+(p2[c]-p0[c])*t+(2*p0[c]-5*p1[c]+4*p2[c]-p3[c])*t*t+(3*p1[c]-p0[c]-3*p2[c]+p3[c])*t**3)))}
+    }
+    fine.push(through[through.length-1]);
+    const line=[fine[0]];let need=.07;
+    for(let i=1;i<fine.length;i++){
+      let a=fine[i-1],left=Math.hypot(fine[i][0]-a[0],fine[i][1]-a[1]);
+      while(left>=need){const f=need/left;a=[a[0]+(fine[i][0]-a[0])*f,a[1]+(fine[i][1]-a[1])*f];line.push(a);left-=need;need=.07}
+      need-=left;
+    }
+    return line;
+  })();
+  const laid=([across,along],z=0)=>[sunToCentre-along*kpc,across*kpc,z*kpc];
   const points=[];
   // kind: 0 arm, 1 bright knot in an arm, 2 disc between the arms, 3 bar and bulge.
   const add=(v,kind,size)=>points.push([v[0],v[1],v[2],kind,size]);
@@ -70,6 +118,16 @@ const milkyWay = (() => {
         const wide=random()<.2?2.6:1,width=Math.max(.15,.336+.036*(R-8.15))*wide,knot=wide===1&&random()<.014;
         add(place(R+normal()*width,azimuth+random()*.5,normal()*(knot?.04:.09)),knot?1:0,knot?1.2+.8*random():.72+1.05*random()**3);
       }
+    }
+  }
+  // The spur's dots: three fifths as many per length as an arm's and 200 pc wide. Neither figure
+  // is measured. It is a lesser feature than the arms it joins: five masers in 2.6 kpc.
+  for(let i=1;i<spur.length;i++){
+    const a=spur[i-1],b=spur[i],step=Math.hypot(b[0]-a[0],b[1]-a[1]),along=[(b[0]-a[0])/step,(b[1]-a[1])/step];
+    let n=step*.6*104;n=Math.floor(n)+(random()<n%1?1:0);
+    for(let k=0;k<n;k++){
+      const wide=random()<.2?2.6:1,knot=wide===1&&random()<.014,u=random()*step,v=normal()*.2*wide;
+      add(laid([a[0]+along[0]*u-along[1]*v,a[1]+along[1]*u+along[0]*v],normal()*(knot?.04:.09)),knot?1:0,knot?1.2+.8*random():.72+1.05*random()**3);
     }
   }
   // An exponential disc, scale length 2.6 kpc, about 300 pc thick.
@@ -97,15 +155,18 @@ const milkyWay = (() => {
   kept.forEach(([x,y,z,k,s,n],i)=>{X[i]=x;Y[i]=y;Z[i]=z;kind[i]=k;size[i]=s;near[i]=n});
   // Each arm's centre line, cut into short runs, for the light along it.
   const lanes=arms.flatMap(arm=>{
-    // A segment's light is one run with rounded ends, stopped 4° short of each end so that its
-    // core ends where the dots do. Cut square it would end in a hard edge across the disc.
-    if(arm.segment){const run=arm.path.slice(8,-8),R=run[Math.floor(run.length/2)][0];return [{at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc,round:true}]}
+    // The Local arm's light is one run with rounded ends. It starts 4° in from the unmeasured
+    // end, so that its core ends where the dots do (cut square it would end in a hard edge
+    // across the disc), and stops 5° short of the Perseus arm's line, whose light it runs into.
+    if(arm.name==='Local arm'){const run=arm.path.slice(8,-10),R=run[Math.floor(run.length/2)][0];return [{of:arm.name,at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc,round:true}]}
     const runs=[];
     for(let i=0;i+1<arm.path.length;i+=24){
       const run=arm.path.slice(i,i+25),R=run[Math.floor(run.length/2)][0];
-      runs.push({at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc});
+      runs.push({of:arm.name,at:run.map(([r,a])=>place(r,a)),strength:Math.min(1,(R-barEnd+.4)/1.4,(edge-R)/3.5),width:Math.max(.15,.336+.036*(R-8.15))*kpc});
     }
     return runs;
   });
-  return {count,X,Y,Z,size,kind,near,sunToCentre,kpc,lanes,labels:arms.map(arm=>({name:arm.name,at:place(...arm.label)}))};
+  // The spur's light, fainter and narrower than an arm's. Both its ends lie inside an arm's.
+  lanes.push({of:'Local spur',at:spur.map(point=>laid(point)),strength:.6,width:.2*kpc});
+  return {count,X,Y,Z,size,kind,near,sunToCentre,kpc,lanes,labels:arms.map(arm=>({name:arm.name,at:place(...arm.label)})),spur:{masers:spurMasers.map(point=>laid(point)),line:spur.map(point=>laid(point))}};
 })();
